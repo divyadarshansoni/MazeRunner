@@ -7,7 +7,7 @@
 
 // Constants
 const float PLAYER_SPEED = 5.0f;
-const float PLAYER_SIZE = 0.6f; // Assuming 1x1 tiles
+const float PLAYER_SIZE = 0.6f;
 const float DIAMOND_SIZE = 0.5f;
 
 GameServer::GameServer(int port) {
@@ -54,7 +54,7 @@ void GameServer::InitWinsock() {
 }
 
 // -----------------------------------------------------------------------------
-// MAZE GENERATION (Recursive Backtracker)
+// MAZE GENERATION
 // -----------------------------------------------------------------------------
 void GameServer::GenerateMaze() {
     // Fill with walls
@@ -109,11 +109,11 @@ void GameServer::GenerateMaze() {
         do {
             rX = distX(rng);
             rY = distY(rng);
-        } while(maze[rY][rX] == 1); // Retry if wall
+        } while(maze[rY][rX] == 1);
 
         Diamond d;
         d.id = i;
-        d.x = (float)rX + 0.5f; // Center in tile
+        d.x = (float)rX + 0.5f;
         d.y = (float)rY + 0.5f;
         d.active = true;
         diamonds.push_back(d);
@@ -134,7 +134,6 @@ void GameServer::AcceptClients() {
     while (connectedCount < 2) {
         SOCKET client = accept(serverSocket, NULL, NULL);
         if (client != INVALID_SOCKET) {
-            // Set Non-Blocking Mode
             u_long mode = 1;
             ioctlsocket(client, FIONBIO, &mode);
 
@@ -176,21 +175,16 @@ void GameServer::Run() {
         float dt = diff.count();
         lastTime = now;
 
-        // 1. Read Inputs -> Add to Latency Queue
         ReadNetworkInput();
 
-        // 2. Process Inputs that have "arrived" after lag
         ProcessDelayedInputs();
 
-        // 3. Physics & Game Logic
         UpdatePhysics(dt);
         CheckCollisions();
 
-        // 4. Timer
         gameTimer -= dt;
         if (gameTimer <= 0) gameTimer = 0;
 
-        // 5. Broadcast State (via Latency Queue)
         BroadcastState();
 
         // Sleep to cap at ~60hz
@@ -225,7 +219,6 @@ void GameServer::ProcessDelayedInputs() {
     while (!inboundQueue.empty()) {
         DelayedMessage& msg = inboundQueue.front();
         if (now >= msg.deliveryTime) {
-            // Message has "arrived"
             std::stringstream ss(msg.data);
             std::string cmd;
             ss >> cmd;
@@ -238,21 +231,19 @@ void GameServer::ProcessDelayedInputs() {
                 std::cout << "EXIT requested. Shutting down...\n";
                 std::string shutdownMsg = "SHUTDOWN\n";
                 
-                // Tell BOTH players to quit
                 for(int i=0; i<2; i++) {
                     SendRawToClient(i, shutdownMsg);
                 }
-                gameRunning = false; // Stop the server loop
+                gameRunning = false;
             }
             inboundQueue.pop_front();
         } else {
-            break; // Queue is sorted by time, so we can stop
+            break;
         }
     }
 }
 
 void GameServer::BroadcastState() {
-    // Format: STATE <time> <p1x> <p1y> <p1s> <p2x> <p2y> <p2s> <d1_active>...<dn_active>
     std::stringstream ss;
     ss << "STATE " << gameTimer << " ";
     for (int i = 0; i < 2; i++) {
@@ -261,7 +252,7 @@ void GameServer::BroadcastState() {
     for (const auto& d : diamonds) {
         ss << (d.active ? 1 : 0);
     }
-    ss << "\n"; // Newline delimiter
+    ss << "\n";
 
     // Add to outbound queue for latency
     DelayedMessage msg;
@@ -301,9 +292,9 @@ bool GameServer::IsWall(float x, float y) {
 }
 
 bool CheckPlayerCollision(float x, float y, int myId, Player* allPlayers) {
-    float safeDist = 0.8f; // Slightly larger than player size (0.6) to keep a gap
+    float safeDist = 0.8f;
     for(int i=0; i<2; i++) {
-        if(i == myId) continue; // Don't check against self
+        if(i == myId) continue;
         
         float dx = x - allPlayers[i].x;
         float dy = y - allPlayers[i].y;
@@ -350,56 +341,52 @@ void GameServer::CheckCollisions() {
         for (auto& d : diamonds) {
             if (!d.active) continue;
             
-            // Count active diamonds
             activeDiamonds++;
 
             float dist = sqrt(pow(players[i].x - d.x, 2) + pow(players[i].y - d.y, 2));
             if (dist < (PLAYER_SIZE/2 + DIAMOND_SIZE/2)) {
                 d.active = false;
                 players[i].score++;
-                activeDiamonds--; // Decrement since we just picked one up
+                activeDiamonds--;
             }
         }
     }
 
     // GAME OVER CHECK
     if (activeDiamonds <= 0) {
-        // Format: GAMEOVER <WinnerID> <Score0> <Score1>
         int winner = (players[0].score > players[1].score) ? 0 : 1;
-        if (players[0].score == players[1].score) winner = -1; // Draw
+        if (players[0].score == players[1].score) winner = -1;
 
         std::stringstream ss;
         ss << "GAMEOVER " << winner << " " << players[0].score << " " << players[1].score << "\n";
         
-        // Send to both immediately
         for(int i=0; i<2; i++) SendRawToClient(i, ss.str());
         
-        // Don't loop this message
         gameRunning = false; 
     }
 }
 
-void GameServer::ResetGame() {
-    // Reset Scores
-    players[0].score = 0;
-    players[1].score = 0;
+// void GameServer::ResetGame() {
+//     // Reset Scores
+//     players[0].score = 0;
+//     players[1].score = 0;
     
-    // Regenerate Maze and Diamonds
-    GenerateMaze(); // This resets positions too
+//     // Regenerate Maze and Diamonds
+//     GenerateMaze();
     
-    // Restart Loop
-    gameRunning = true;
+//     // Restart Loop
+//     gameRunning = true;
 
-    // Send NEW SETUP to both clients
-    std::stringstream ss;
-    ss << "SETUP " << 0 << " " << mazeWidth << " " << mazeHeight << " "; // Hack: ID doesn't matter here
-    for(const auto& row : maze) for(int cell : row) ss << cell;
-    ss << " " << diamonds.size() << " ";
-    for(const auto& d : diamonds) ss << d.x << " " << d.y << " ";
-    ss << "\n";
+//     // Send NEW SETUP to both clients
+//     std::stringstream ss;
+//     ss << "SETUP " << 0 << " " << mazeWidth << " " << mazeHeight << " "; // Hack: ID doesn't matter here
+//     for(const auto& row : maze) for(int cell : row) ss << cell;
+//     ss << " " << diamonds.size() << " ";
+//     for(const auto& d : diamonds) ss << d.x << " " << d.y << " ";
+//     ss << "\n";
 
-    // Re-broadcast setup (We need to handle ID re-assignment carefully, 
-    // but for this simple test, assume clients keep their IDs).
-    SendRawToClient(0, ss.str());
-    SendRawToClient(1, ss.str());
-}
+//     // Re-broadcast setup (We need to handle ID re-assignment carefully, 
+//     // but for this simple test, assume clients keep their IDs).
+//     SendRawToClient(0, ss.str());
+//     SendRawToClient(1, ss.str());
+// }

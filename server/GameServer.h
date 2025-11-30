@@ -7,7 +7,7 @@
 #include <deque>
 #include <chrono>
 
-#pragma comment (lib, "ws2_32.lib") // Link Winsock library automatically
+#pragma comment (lib, "ws2_32.lib")
 
 // Data Structures
 struct Player {
@@ -25,7 +25,6 @@ struct Diamond {
     bool active;
 };
 
-// Represents a message waiting to be sent (or processed) to simulate lag
 struct DelayedMessage {
     std::chrono::steady_clock::time_point deliveryTime;
     std::string data;
