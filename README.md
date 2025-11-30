@@ -13,7 +13,13 @@ A real-time 2-player maze collection game developed for the **Associate Game Dev
 ## 🚀 Setup & Compilation
 
 ### Step 1: Compile the Server
-You need a C++ compiler (MinGW/G++ or Visual Studio) to build the server executable. run this where your main.cpp file is stored
+You need a C++ compiler (MinGW/G++ or Visual Studio) to build the server executable. run this where your main.cpp file is stored. For my code first open server folder by running this command 
+
+```bash
+cd server
+````
+
+Then run this command to compile
 
 **Using G++ (MinGW):**
 ```bash
