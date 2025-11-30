@@ -98,4 +98,7 @@ The original requirement suggested spawning coins at fixed time intervals. In th
 
   * Ensure that the `GameClient.cs` script in Unity has all Prefabs (Player0, Player1, Wall, Diamond) and UI Panels (Start, HUD, GameOver) linked in the Inspector before building.
 
+
+### Note
+  * For more information about the specs you can also go through description.docx.
 <!-- end list -->
