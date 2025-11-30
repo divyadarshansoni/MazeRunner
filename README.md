@@ -100,5 +100,5 @@ The original requirement suggested spawning coins at fixed time intervals. In th
 
 
 ### Note
-  * For more information about the specs you can also go through description.docx.
+  * For more information about the specs you can also go through description.docx. The assets folder is also in the github directory. It can also directly be copied into you unity project file. Then you just need to coonect the coorect materials, etc to their repective prefabs in hierarchy.
 <!-- end list -->
